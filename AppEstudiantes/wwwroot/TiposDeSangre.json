@@ -1,0 +1,10 @@
+[
+    { "Id_tipo_sangre": 1, "Nombre": "O+" },
+    { "Id_tipo_sangre": 2, "Nombre": "O-" },
+    { "Id_tipo_sangre": 3, "Nombre": "A+" },
+    { "Id_tipo_sangre": 4, "Nombre": "A-" },
+    { "Id_tipo_sangre": 5, "Nombre": "B+" },
+    { "Id_tipo_sangre": 6, "Nombre": "B-" },
+    { "Id_tipo_sangre": 7, "Nombre": "AB+" },
+    { "Id_tipo_sangre": 8, "Nombre": "AB-" }
+]

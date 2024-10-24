@@ -1,0 +1,208 @@
+@page "/v_estudiante"
+@using AppEstudiantes.Data
+@using System.Text.Json
+@using System.Text.Json.Serialization
+@inject IHttpClientFactory ClientFactory
+@using System.Net.Http.Json
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+
+<ul class="menu">
+    <div class="menu-izquierdo">
+        <h5>Ferdinand Mendez Reyna</h5>
+        <li><a href="#">Inicio</a></li>
+        <li><a href="#">Nosotros</a></li>
+        <li><a href="#">Contacto</a></li>
+        <li><a href="#">Sub Menu <i class="fas fa-caret-down"></i></a></li>
+        <li><a href="#">Ubicacion</a></li>
+    </div>
+    <div class="menu-derecho">
+        <li><a href="#"><i class="fas fa-sign-in-alt"></i> Iniciar</a></li>      
+        <li><a href="#"><i class="fas fa-sign-out-alt"></i> Cerrar</a></li> 
+    </div>
+</ul>
+
+
+@if (getEstudianteError || estudiantes is null)
+{
+    <p>No se encontró la API.</p>
+}
+else
+{
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalEstudiante" @onclick="LimpiarCampos">NUEVO</button>
+    <br><br>
+
+    <table class="table table-bordered" id="tabla-estudiantes">
+        <thead>
+            <tr>
+                <th>Carne</th>
+                <th>Nombres</th>
+                <th>Apellidos</th>
+                <th>Direccion</th>
+                <th>Telefono</th>
+                <th>Correo</th>
+                <th>Sangre</th>
+                <th>Fecha Nacimiento</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var estudiante in estudiantes)
+            {
+                var tipoSangre = TiposDeSangre?.FirstOrDefault(t => t.Id_tipo_sangre == estudiante.Id_tipo_sangre);
+                <tr @onclick="(() => enviarParametros(estudiante.Id_estudiantes, estudiante.Carne, estudiante.Nombres, estudiante.Apellidos, estudiante.Direccion, estudiante.Telefono, estudiante.CorreoElectronico, estudiante.Id_tipo_sangre, estudiante.FechaNacimiento))">
+                    <td>@estudiante.Carne</td>
+                    <td>@estudiante.Nombres</td>
+                    <td>@estudiante.Apellidos</td>
+                    <td>@estudiante.Direccion</td>
+                    <td>@estudiante.Telefono</td>
+                    <td>@estudiante.CorreoElectronico</td>
+                    <td>@estudiante.Id_tipo_sangre) @tipoSangre?.Nombre</td>
+                    <td>@estudiante.FechaNacimiento?.ToString("yyyy-MM-dd")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="modal fade" id="modalEstudiante" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title" id="modalLabel">Datos del Estudiante</h4>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form>
+                        <input type="text" class="form-control" id="txt_id" placeholder="ID" @bind="var_id_estudiantes" disabled>
+
+                        <input type="text" class="form-control" id="txt_carne" name="txt_carne" placeholder="Carne" 
+                         @bind="var_carne" pattern="^E\d{3}$" title="Debes coincidir con el formato solicitado, Ejemplo: E001" required>
+                        <input type="text" class="form-control" id="txt_nombres" placeholder="Nombres" @bind="var_nombres">
+                        <input type="text" class="form-control" id="txt_apellidos" placeholder="Apellidos" @bind="var_apellidos">
+                        <input type="text" class="form-control" id="txt_direccion" placeholder="Direccion" @bind="var_direccion">
+                        <input type="text" class="form-control" id="txt_telefono" placeholder="Telefono" @bind="var_telefono">
+                        <input type="email" class="form-control" id="txt_correo_electronico" placeholder="Correo Electronico" @bind="var_correo_electronico">
+                        @if (TiposDeSangre != null)
+                        {
+                            <select @bind="var_id_tipo_sangre" class="form-control" id="txt_id_tipo_sangre">
+                                <option value="0">Elija</option>
+                                @foreach (var tipo in TiposDeSangre)
+                                {
+                                    <option value="@tipo.Id_tipo_sangre">@tipo.Nombre</option>
+                                }
+                            </select>
+                        }
+                        else
+                        {
+                            <p>Cargando tipos de sangre...</p>
+                        }
+                        <input type="date" class="form-control" placeholder="Fecha Nacimiento" @bind="var_fn" id="txt_fn">
+                        <button class="btn btn-info" @onclick="Crear">Agregar</button>
+                        <button class="btn btn-warning" @onclick="Actualizar">Modificar</button>
+                        <button class="btn btn-danger" @onclick="EliminarConfirmado">Eliminar</button>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+<ul class="menu1">
+  <li>Desarrollo Web: Ferdinand Mendez Reyna</li>
+</ul>
+
+@code {
+    private string? url = "http://localhost:5294/api/Estudiantes";
+    private int var_id_estudiantes;
+    private string? var_carne, var_nombres, var_apellidos, var_direccion, var_telefono, var_correo_electronico;
+    private int var_id_tipo_sangre;
+    private DateTime? var_fn;
+    private List<Estudiante>? estudiantes;
+    private bool getEstudianteError;
+    private List<TipoSangre>? TiposDeSangre;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var client = ClientFactory.CreateClient();
+            client.BaseAddress = new Uri(Navigation.BaseUri); 
+            TiposDeSangre = await client.GetFromJsonAsync<List<TipoSangre>>("TiposDeSangre.json");
+            estudiantes = await client.GetFromJsonAsync<List<Estudiante>>(url);
+
+            if (TiposDeSangre == null || estudiantes == null)
+            {
+                getEstudianteError = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al conectarse a la API de estudiantes: {ex.Message}");
+            getEstudianteError = true;
+        }
+    }
+       async Task enviarParametros(int id, string? carne, string? nombres, string? apellidos, string? direccion, string? telefono, string? correoElectronico, int id_tipo_sangre, DateTime? fn)
+{
+    var_id_estudiantes = id;
+    var_carne = carne ?? string.Empty;
+    var_nombres = nombres ?? string.Empty;
+    var_apellidos = apellidos ?? string.Empty;
+    var_direccion = direccion ?? string.Empty;
+    var_telefono = telefono ?? string.Empty;
+    var_correo_electronico = correoElectronico ?? string.Empty;
+    var_id_tipo_sangre = id_tipo_sangre;
+    var_fn = fn;
+
+    await JSRuntime.InvokeVoidAsync("abrirModal");
+}
+    // Crear
+    private async Task Crear()
+    {
+        var client = ClientFactory.CreateClient();
+        var nuevoEstudiante = new Estudiante{Carne = var_carne,Nombres = var_nombres,Apellidos = var_apellidos,Direccion = var_direccion,Telefono = var_telefono,CorreoElectronico = var_correo_electronico,Id_tipo_sangre = var_id_tipo_sangre,FechaNacimiento = var_fn};
+        await client.PostAsJsonAsync(url, nuevoEstudiante);
+        LimpiarCampos();
+        await OnInitializedAsync();
+    }
+
+    // Actualizar
+    private async Task Actualizar()
+    {
+        var client = ClientFactory.CreateClient();
+        var actualizarEstudiante = new Estudiante{Id_estudiantes = var_id_estudiantes,Carne = var_carne,Nombres = var_nombres,Apellidos = var_apellidos,Direccion = var_direccion,Telefono = var_telefono,CorreoElectronico = var_correo_electronico,Id_tipo_sangre = var_id_tipo_sangre,FechaNacimiento = var_fn};
+        await client.PutAsJsonAsync($"{url}/{var_id_estudiantes}", actualizarEstudiante);
+        LimpiarCampos();
+        await OnInitializedAsync();
+    }
+    //Eliminar
+    private async Task EliminarConfirmado()
+    {
+        var confirmacion = await JSRuntime.InvokeAsync<bool>("confirmDelete");
+       
+        if (confirmacion)
+        {
+            await Eliminar();
+        }
+    }
+    private async Task Eliminar()
+    {
+        var client = ClientFactory.CreateClient();
+        await client.DeleteAsync($"{url}/{var_id_estudiantes}");
+        LimpiarCampos();
+        await OnInitializedAsync();
+    }
+    private void LimpiarCampos()
+    {
+        var_id_estudiantes = 0;
+        var_carne = string.Empty;
+        var_nombres = string.Empty;
+        var_apellidos = string.Empty;
+        var_direccion = string.Empty;
+        var_telefono = string.Empty;
+        var_correo_electronico = string.Empty;
+        var_id_tipo_sangre = 0;
+        var_fn = null;
+    }
+}
+<script src="js/funciones.js"></script>
